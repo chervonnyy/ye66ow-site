@@ -1,0 +1,22 @@
+[
+  {
+    "id": "plastic-river",
+    "title": "Plastic River",
+    "link": "https://artists.landr.com/990591499010",
+    "cover": {
+      "1200": "/covers/plastic-river-cover-1200.webp",
+      "800": "/covers/plastic-river-cover-800.webp",
+      "512": "/covers/plastic-river-cover-512.webp"
+    }
+  },
+  {
+    "id": "still-alive",
+    "title": "Still Alive",
+    "link": "https://artists.landr.com/056870194080",
+    "cover": {
+      "1200": "/covers/still-alive-cover-1200.webp",
+      "800": "/covers/still-alive-cover-800.webp",
+      "512": "/covers/still-alive-cover-512.webp"
+    }
+  }
+]
