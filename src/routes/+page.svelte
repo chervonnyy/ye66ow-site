@@ -73,6 +73,18 @@
 				isVisible: false
 			};
 		}
+
+		// Обновляем windowData в соответствующем файле
+		const fileIndex = desktopFiles.findIndex((file) => file.fileId === windowData.fileId);
+		if (fileIndex !== -1) {
+			desktopFiles[fileIndex] = {
+				...desktopFiles[fileIndex],
+				windowData: {
+					...desktopFiles[fileIndex].windowData,
+					...windowData
+				}
+			};
+		}
 	}
 
 	function handleFileToggle(event: Event) {
@@ -96,7 +108,12 @@
 				{
 					id: Date.now(),
 					fileId: fileData.fileId,
-					...fileData,
+					title: fileData.title,
+					icon: fileData.icon,
+					image: fileData.image,
+					link: fileData.link,
+					text1: fileData.text1,
+					text2: fileData.text2,
 					x: fileData.x || (window.innerWidth - 400) / 2,
 					y: fileData.y || (window.innerHeight - 500) / 2,
 					isVisible: true
