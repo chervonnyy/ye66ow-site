@@ -2,6 +2,8 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { browser } from '$app/environment';
 	import releasesData from '$lib/releases.json';
+	import Window from '$lib/Window.svelte';
+	import DesktopFile from '$lib/DesktopFile.svelte';
 
 	let asciiContainer: HTMLPreElement;
 	let animationId: number;
@@ -13,7 +15,7 @@
 	let currentFont = 'tech';
 
 	// Переменная для скрытия блока релизов
-	let isReleasesVisible = true;
+	let isReleasesVisible = false;
 
 	// Функция для переключения видимости блока
 	function toggleReleases(event: Event) {
@@ -22,6 +24,85 @@
 		event.stopPropagation();
 		isReleasesVisible = !isReleasesVisible;
 		console.log('isReleasesVisible now:', isReleasesVisible);
+	}
+
+	// Случайные позиции для окон
+	let windowPositions = [
+		{ x: 100, y: 150 },
+		{ x: 300, y: 200 }
+	];
+
+	// Файлы на рабочем столе
+	let desktopFiles: any[] = [];
+	let openWindows: any[] = [];
+
+	// Генерируем случайные позиции для окон
+	function generateRandomPositions() {
+		if (!browser) return;
+
+		const isMobile = window.innerWidth <= 768;
+		const windowWidth = isMobile ? Math.min(280, window.innerWidth - 40) : 400;
+		const windowHeight = isMobile ? Math.min(350, window.innerHeight - 100) : 500;
+
+		const maxX = window.innerWidth - windowWidth;
+		const maxY = window.innerHeight - windowHeight;
+
+		windowPositions = [
+			{
+				x: Math.random() * Math.max(maxX - 50, 50),
+				y: Math.random() * Math.max(maxY - 50, 50)
+			},
+			{
+				x: Math.random() * Math.max(maxX - 50, 50),
+				y: Math.random() * Math.max(maxY - 50, 50)
+			}
+		];
+	}
+
+	// Обработчики событий для взаимодействия окон и файлов
+	function handleWindowClose(event: Event) {
+		const customEvent = event as CustomEvent;
+		const windowData = customEvent.detail;
+		const fileName = `${windowData.title.toLowerCase().replace(/\s+/g, '-')}.${windowData.text1 === 'Music Release' ? 'mp3' : 'txt'}`;
+
+		// Скрываем окно вместо удаления
+		const windowIndex = openWindows.findIndex((window) => window.fileId === windowData.fileId);
+		if (windowIndex !== -1) {
+			openWindows[windowIndex] = {
+				...openWindows[windowIndex],
+				isVisible: false
+			};
+		}
+	}
+
+	function handleFileToggle(event: Event) {
+		const customEvent = event as CustomEvent;
+		const fileData = customEvent.detail;
+		const fileName = `${fileData.title.toLowerCase().replace(/\s+/g, '-')}.${fileData.text1 === 'Music Release' ? 'mp3' : 'txt'}`;
+
+		// Ищем соответствующее окно по уникальному ID файла
+		const windowIndex = openWindows.findIndex((window) => window.fileId === fileData.fileId);
+
+		if (windowIndex !== -1) {
+			// Переключаем видимость существующего окна
+			openWindows[windowIndex] = {
+				...openWindows[windowIndex],
+				isVisible: !openWindows[windowIndex].isVisible
+			};
+		} else {
+			// Создаем новое окно, если его нет
+			openWindows = [
+				...openWindows,
+				{
+					id: Date.now(),
+					fileId: fileData.fileId,
+					...fileData,
+					x: fileData.x || (window.innerWidth - 400) / 2,
+					y: fileData.y || (window.innerHeight - 500) / 2,
+					isVisible: true
+				}
+			];
+		}
 	}
 
 	// Разные наборы символов для экспериментов
@@ -467,14 +548,7 @@
 	let targetFPS = 60;
 
 	// Переменные для интерактивности
-	let touchStartX = 0;
-	let touchStartY = 0;
-	let touchStartTime = 0;
-	let lastTouchTime = 0;
-	let gestureMode = 'tap'; // 'tap', 'swipe', 'pinch'
-	let pinchStartDistance = 0;
-	let currentScale = 1;
-	let animationSpeed = 1;
+	// Touch переменные удалены - они мешали кликам на мобилке
 
 	// Функция для определения мобильного устройства и настройки оптимизации
 	function detectMobileAndOptimize() {
@@ -634,106 +708,14 @@
 		return 'stars';
 	}
 
-	// Функция для переключения символов при тапе на мобильных
-	function handleTapToChangeSymbols() {
-		if (!browser) return;
-
-		console.log('Tap detected! Switching symbols...'); // Отладочная информация
-
-		// Временно отключаем автоматическую смену
-		const wasAutoModeEnabled = autoModeEnabled;
-		autoModeEnabled = false;
-
-		// Выбираем случайный набор символов
-		const newSet = getRandomSymbolSet();
-		console.log('Switching to symbol set:', newSet); // Отладочная информация
-		changeSymbolSet(newSet);
-		generateASCII();
-
-		// Включаем автоматическую смену через 5 секунд
-		setTimeout(() => {
-			autoModeEnabled = wasAutoModeEnabled;
-			lastChangeTime = Date.now();
-			changeInterval = Math.random() * 5000 + 3000;
-		}, 5000);
-	}
-
-	// Функция для обработки свайпов
-	function handleSwipe(direction: string) {
-		if (!browser) return;
-
-		// Временно отключаем автоматическую смену
-		const wasAutoModeEnabled = autoModeEnabled;
-		autoModeEnabled = false;
-
-		// Выбираем набор символов в зависимости от направления свайпа
-		let newSet: keyof typeof symbolSets;
-		switch (direction) {
-			case 'left':
-				newSet = 'flowing';
-				break;
-			case 'right':
-				newSet = 'waves';
-				break;
-			case 'up':
-				newSet = 'organic';
-				break;
-			case 'down':
-				newSet = 'stars';
-				break;
-			default:
-				newSet = getRandomSymbolSet();
-		}
-
-		changeSymbolSet(newSet);
-		generateASCII();
-
-		// Включаем автоматическую смену через 8 секунд
-		setTimeout(() => {
-			autoModeEnabled = wasAutoModeEnabled;
-			lastChangeTime = Date.now();
-			changeInterval = Math.random() * 5000 + 3000;
-		}, 8000);
-	}
-
-	// Функция для обработки пинча
-	function handlePinch(scale: number) {
-		if (!browser) return;
-
-		// Изменяем скорость анимации в зависимости от масштаба
-		animationSpeed = Math.max(0.1, Math.min(3, scale));
-		currentScale = scale;
-
-		// Временно ускоряем анимацию
-		const originalTimeFactor = time;
-		time *= animationSpeed;
-		generateASCII();
-		time = originalTimeFactor;
-	}
+	// Функции для обработки жестов удалены - они мешали кликам на мобилке
 
 	// Функция для расчета расстояния между двумя точками
 	function getDistance(x1: number, y1: number, x2: number, y2: number): number {
 		return Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
 	}
 
-	// Функция для определения направления свайпа
-	function getSwipeDirection(startX: number, startY: number, endX: number, endY: number): string {
-		const deltaX = endX - startX;
-		const deltaY = endY - startY;
-		const minSwipeDistance = 50;
-
-		if (Math.abs(deltaX) > Math.abs(deltaY)) {
-			if (Math.abs(deltaX) > minSwipeDistance) {
-				return deltaX > 0 ? 'right' : 'left';
-			}
-		} else {
-			if (Math.abs(deltaY) > minSwipeDistance) {
-				return deltaY > 0 ? 'down' : 'up';
-			}
-		}
-
-		return 'tap';
-	}
+	// Функция getSwipeDirection удалена - больше не используется
 
 	// Функция для автоматической смены символов
 	function autoChangeSymbols() {
@@ -1001,6 +983,51 @@
 		}, 1000);
 
 		if (browser) {
+			// Генерируем случайные позиции для окон
+			generateRandomPositions();
+
+			// Инициализируем начальные окна
+			const isMobile = window.innerWidth <= 768;
+			openWindows = releasesData.map((release, index) => ({
+				id: Date.now() + index,
+				fileId: `file-${index}`,
+				title: release.title,
+				icon: '🎵',
+				image: release.cover['800'],
+				link: release.link,
+				text1: 'Music Release',
+				text2: '@ye66ow',
+				x: windowPositions[index]?.x || (isMobile ? 20 : 100),
+				y: windowPositions[index]?.y || (isMobile ? 50 : 150),
+				isVisible: true
+			}));
+
+			// Создаем файлы на рабочем столе для каждого релиза
+			desktopFiles = releasesData.map((release, index) => ({
+				id: Date.now() + index + 1000,
+				fileId: `file-${index}`,
+				fileName: release.title,
+				fileIcon: '🎵',
+				fileType: 'mp3',
+				windowData: {
+					fileId: `file-${index}`,
+					title: release.title,
+					icon: '🎵',
+					image: release.cover['800'],
+					link: release.link,
+					text1: 'Music Release',
+					text2: '@ye66ow',
+					x: windowPositions[index]?.x || 100,
+					y: windowPositions[index]?.y || 150
+				},
+				x: 50 + index * 200,
+				y: 50
+			}));
+
+			// Добавляем обработчики событий
+			window.addEventListener('windowClose', handleWindowClose);
+			window.addEventListener('fileToggle', handleFileToggle);
+
 			// Определяем мобильное устройство и настраиваем оптимизацию
 			detectMobileAndOptimize();
 			// PWA: Prevent zoom on double tap
@@ -1057,6 +1084,7 @@
 					detectMobileAndOptimize(); // Переопределяем оптимизацию
 					calculateDimensions();
 					generateASCII();
+					generateRandomPositions(); // Перегенерируем позиции окон
 				}, 50);
 			};
 
@@ -1096,118 +1124,24 @@
 				}
 			};
 
-			// Обработчик начала касания
-			const handleTouchStart = (e: TouchEvent) => {
-				e.preventDefault();
-				const touch = e.touches[0];
-				touchStartX = touch.clientX;
-				touchStartY = touch.clientY;
-				touchStartTime = Date.now();
-
-				console.log('Touch start:', { x: touchStartX, y: touchStartY, touches: e.touches.length }); // Отладочная информация
-
-				// Если два пальца - режим пинча
-				if (e.touches.length === 2) {
-					gestureMode = 'pinch';
-					const touch1 = e.touches[0];
-					const touch2 = e.touches[1];
-					pinchStartDistance = getDistance(
-						touch1.clientX,
-						touch1.clientY,
-						touch2.clientX,
-						touch2.clientY
-					);
-					console.log('Pinch mode started');
-				} else {
-					gestureMode = 'tap';
-					console.log('Tap mode started');
-				}
-			};
-
-			// Обработчик движения касания
-			const handleTouchMove = (e: TouchEvent) => {
-				e.preventDefault();
-
-				if (gestureMode === 'pinch' && e.touches.length === 2) {
-					const touch1 = e.touches[0];
-					const touch2 = e.touches[1];
-					const currentDistance = getDistance(
-						touch1.clientX,
-						touch1.clientY,
-						touch2.clientX,
-						touch2.clientY
-					);
-					const scale = currentDistance / pinchStartDistance;
-					handlePinch(scale);
-				}
-			};
-
-			// Обработчик окончания касания
-			const handleTouchEnd = (e: TouchEvent) => {
-				e.preventDefault();
-				const touch = e.changedTouches[0];
-				const endX = touch.clientX;
-				const endY = touch.clientY;
-				const endTime = Date.now();
-
-				console.log('Touch end:', {
-					gestureMode,
-					duration: endTime - touchStartTime,
-					distance: getDistance(touchStartX, touchStartY, endX, endY)
-				}); // Отладочная информация
-
-				if (gestureMode === 'tap') {
-					const duration = endTime - touchStartTime;
-					const distance = getDistance(touchStartX, touchStartY, endX, endY);
-
-					// Если касание было коротким и недалеко - это тап
-					if (duration < 300 && distance < 30) {
-						console.log('Tap detected!');
-						handleTapToChangeSymbols();
-					} else if (distance > 30) {
-						// Иначе это свайп
-						const direction = getSwipeDirection(touchStartX, touchStartY, endX, endY);
-						console.log('Swipe detected:', direction);
-						if (direction !== 'tap') {
-							handleSwipe(direction);
-						}
-					}
-				}
-
-				gestureMode = 'tap';
-			};
-
-			// Обработчик клика для десктопа
-			const handleClick = (e: MouseEvent) => {
-				// Только для мобильных устройств или если это не клавиатурное управление
-				if (window.innerWidth <= 768) {
-					e.preventDefault();
-					handleTapToChangeSymbols();
-				}
-			};
+			// Обработчики touch событий удалены - они мешали кликам на мобилке
 
 			window.addEventListener('resize', handleResize);
 			window.addEventListener('orientationchange', handleOrientationChange);
 			window.addEventListener('keydown', handleKeyPress);
 			window.addEventListener('load', initASCII);
 
-			// Добавляем обработчики для жестов
-			document.addEventListener('touchstart', handleTouchStart, { passive: false });
-			document.addEventListener('touchmove', handleTouchMove, { passive: false });
-			document.addEventListener('touchend', handleTouchEnd, { passive: false });
-			// document.addEventListener('click', handleClick); // Отключено для корректной работы кнопки сворачивания
+			// Touch обработчики удалены - они мешали кликам на мобилке
 
 			return () => {
 				window.removeEventListener('resize', handleResize);
 				window.removeEventListener('orientationchange', handleOrientationChange);
 				window.removeEventListener('keydown', handleKeyPress);
 				window.removeEventListener('load', initASCII);
+				window.removeEventListener('windowClose', handleWindowClose);
+				window.removeEventListener('fileToggle', handleFileToggle);
 
-				// Удаляем обработчики для жестов
-				document.removeEventListener('touchstart', handleTouchStart);
-				document.removeEventListener('touchmove', handleTouchMove);
-				document.removeEventListener('touchend', handleTouchEnd);
-				// document.removeEventListener('click', handleClick); // Отключено для корректной работы кнопки сворачивания
+				// Touch обработчики удалены
 			};
 		}
 	});
@@ -1261,51 +1195,34 @@
 		<a href="mailto:hello@ye66ow.com" class="email-link">hello@ye66ow.com</a>
 	</div>
 
-	<!-- Секция релизов -->
-	{#if isReleasesVisible}
-		<section class="releases-section">
-			<div class="releases-container">
-				<!-- Заголовок окна в стиле Windows -->
-				<div class="window-titlebar">
-					<div class="window-title">Music</div>
-					<button class="minimize-btn" on:click={toggleReleases} title="Свернуть">
-						<div class="minimize-icon">_</div>
-					</button>
-				</div>
+	<!-- Окна с релизами -->
+	{#each openWindows as window, index}
+		{#if window.isVisible !== false}
+			<Window
+				fileId={window.fileId}
+				title={window.title}
+				icon={window.icon}
+				image={window.image}
+				link={window.link}
+				text1={window.text1}
+				text2={window.text2}
+				initialX={window.x}
+				initialY={window.y}
+			/>
+		{/if}
+	{/each}
 
-				<div class="releases-list">
-					{#each releasesData as release}
-						<article class="release-item">
-							<a href={release.link} target="_blank" rel="noopener noreferrer" class="release-link">
-								<picture class="release-cover">
-									<img
-										src={release.cover['800']}
-										srcset="{release.cover['1200']} 1200w,
-												{release.cover['800']} 800w,
-												{release.cover['512']} 512w"
-										sizes="(min-width:1024px) 240px, 60vw"
-										alt="{release.title} cover"
-										loading="lazy"
-										decoding="async"
-									/>
-								</picture>
-								<h3 class="release-title" style="font-family: var(--font-{currentFont})">
-									{release.title}
-								</h3>
-							</a>
-						</article>
-					{/each}
-				</div>
-			</div>
-		</section>
-	{:else}
-		<!-- Кнопка Music когда блок свернут -->
-		<div class="music-btn-container">
-			<button class="music-btn" on:click={toggleReleases} title="Показать релизы">
-				<span class="music-text">Music</span>
-			</button>
-		</div>
-	{/if}
+	<!-- Файлы на рабочем столе -->
+	{#each desktopFiles as file}
+		<DesktopFile
+			fileName={file.fileName}
+			fileIcon={file.fileIcon}
+			fileType={file.fileType}
+			windowData={file.windowData}
+			initialX={file.x}
+			initialY={file.y}
+		/>
+	{/each}
 </div>
 
 <style>
@@ -1553,107 +1470,6 @@
 		}
 	}
 
-	/* Кнопка сворачивания в стиле ретро Windows */
-	.minimize-btn {
-		position: absolute;
-		top: 8px;
-		right: 8px;
-		background: #c0c0c0;
-		color: #000;
-		border: 2px outset #c0c0c0;
-		padding: 4px 8px;
-		font-family: 'MS Sans Serif', 'Courier New', monospace;
-		font-size: 14px;
-		font-weight: bold;
-		cursor: pointer;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		width: 24px;
-		height: 24px;
-		transition: all 0.1s ease;
-		z-index: 10;
-		box-shadow:
-			2px 2px 0 #808080,
-			inset 1px 1px 0 #ffffff;
-	}
-
-	.minimize-btn:hover {
-		background: #d4d0c8;
-		transform: translate(1px, 1px);
-		box-shadow:
-			1px 1px 0 #808080,
-			inset 1px 1px 0 #ffffff;
-	}
-
-	.minimize-btn:active {
-		background: #a0a0a0;
-		transform: translate(2px, 2px);
-		box-shadow:
-			inset 1px 1px 2px #808080,
-			inset -1px -1px 2px #ffffff;
-		border: 2px inset #c0c0c0;
-	}
-
-	.minimize-icon {
-		font-size: 16px;
-		font-weight: bold;
-		line-height: 1;
-	}
-
-	/* Кнопка Music когда блок свернут */
-	.music-btn-container {
-		position: fixed;
-		top: 112px;
-		right: 37px;
-		z-index: 100;
-		pointer-events: auto;
-	}
-
-	.music-btn {
-		background: #c0c0c0;
-		color: #000;
-		border: 3px outset #c0c0c0;
-		padding: 12px 24px;
-		font-family: 'MS Sans Serif', 'Courier New', monospace;
-		font-size: 16px;
-		font-weight: bold;
-		cursor: pointer;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		min-width: 120px;
-		height: 40px;
-		transition: all 0.1s ease;
-		box-shadow:
-			4px 4px 0 #404040,
-			2px 2px 0 #808080,
-			inset 1px 1px 0 #ffffff;
-		pointer-events: auto;
-	}
-
-	.music-btn:hover {
-		background: #d4d0c8;
-		box-shadow:
-			3px 3px 0 #404040,
-			1px 1px 0 #808080,
-			inset 1px 1px 0 #ffffff;
-	}
-
-	.music-btn:active {
-		background: #a0a0a0;
-		box-shadow:
-			inset 2px 2px 2px #404040,
-			inset -1px -1px 2px #ffffff;
-		border: 3px inset #c0c0c0;
-	}
-
-	.music-text {
-		font-size: 16px;
-		font-weight: bold;
-		letter-spacing: 1px;
-	}
-
 	/* Главный бренд - почта */
 	.email-header {
 		position: fixed;
@@ -1693,364 +1509,5 @@
 		backdrop-filter: blur(15px);
 		-webkit-backdrop-filter: blur(15px);
 		text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.9);
-	}
-
-	/* Секция релизов */
-	.releases-section {
-		position: fixed;
-		top: 100px;
-		right: 20px;
-		width: auto;
-		height: calc(100vh - 120px);
-		height: calc(100dvh - 120px);
-		display: flex;
-		align-items: flex-start;
-		justify-content: flex-end;
-		z-index: 50;
-		pointer-events: none;
-		overflow-y: auto;
-		padding: 20px;
-		box-sizing: border-box;
-	}
-
-	.releases-container {
-		position: relative;
-		background: #c0c0c0;
-		padding: 0;
-		width: fit-content;
-		max-width: 320px;
-		box-shadow:
-			4px 4px 0 #404040,
-			2px 2px 0 #808080,
-			inset 1px 1px 0 #ffffff;
-		border: 3px outset #c0c0c0;
-		pointer-events: auto;
-	}
-
-	/* Заголовок окна в стиле Windows 95 */
-	.window-titlebar {
-		background: linear-gradient(90deg, #000080 0%, #0000ff 100%);
-		color: #ffffff;
-		padding: 6px 10px;
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		font-family: 'MS Sans Serif', 'Courier New', monospace;
-		font-size: 13px;
-		font-weight: bold;
-		height: 24px;
-		box-shadow:
-			inset 0 1px 0 rgba(255, 255, 255, 0.4),
-			inset 0 -1px 0 rgba(0, 0, 0, 0.3);
-		border-bottom: 1px solid #404040;
-		pointer-events: auto;
-	}
-
-	.window-title {
-		flex: 1;
-		text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.5);
-	}
-
-	.window-titlebar .minimize-btn {
-		position: static;
-		width: 22px;
-		height: 18px;
-		padding: 0;
-		margin: 0;
-		background: #c0c0c0;
-		border: 2px outset #c0c0c0;
-		box-shadow:
-			2px 2px 0 #808080,
-			inset 1px 1px 0 #ffffff;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-	}
-
-	.window-titlebar .minimize-btn:hover {
-		background: #d4d0c8;
-		transform: none;
-		box-shadow:
-			2px 2px 0 #808080,
-			inset 1px 1px 0 #ffffff;
-	}
-
-	.window-titlebar .minimize-btn:active {
-		background: #a0a0a0;
-		transform: none;
-		box-shadow:
-			inset 2px 2px 2px #808080,
-			inset -1px -1px 2px #ffffff;
-		border: 2px inset #c0c0c0;
-	}
-
-	/* Исправление для мобильных устройств */
-	.window-titlebar .minimize-btn:focus {
-		outline: none;
-	}
-
-	.window-titlebar .minimize-btn:focus-visible {
-		outline: 2px solid #0000ff;
-		outline-offset: 1px;
-	}
-
-	/* Дополнительные стили для мобильных устройств */
-	@media (max-width: 768px) {
-		.window-titlebar .minimize-btn {
-			width: 24px;
-			height: 20px;
-			font-size: 14px;
-			-webkit-tap-highlight-color: transparent;
-			touch-action: manipulation;
-			pointer-events: auto;
-			z-index: 1000;
-			position: relative;
-		}
-	}
-
-	@media (max-width: 480px) {
-		.window-titlebar .minimize-btn {
-			width: 22px;
-			height: 18px;
-			font-size: 12px;
-			-webkit-tap-highlight-color: transparent;
-			touch-action: manipulation;
-			pointer-events: auto;
-			z-index: 1000;
-			position: relative;
-		}
-
-		/* Предотвращаем перехват событий на мобилке */
-		.releases-container {
-			pointer-events: auto;
-		}
-
-		.window-titlebar {
-			pointer-events: auto;
-		}
-	}
-
-	/* Очень маленькие экраны */
-	@media (max-width: 320px) {
-		.email-header {
-			right: 5px;
-			max-width: calc(100vw - 10px);
-			transform: translateX(5px);
-		}
-
-		.email-link {
-			font-size: 14px;
-			padding: 6px 8px;
-		}
-	}
-
-	.window-titlebar .minimize-icon {
-		font-size: 12px;
-		line-height: 1;
-	}
-
-	.releases-list {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 24px;
-		padding: 24px;
-		background: #c0c0c0;
-		border-top: 1px solid #808080;
-	}
-
-	.release-item {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-	}
-
-	.release-link {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		text-decoration: none;
-		color: inherit;
-		gap: 0px;
-	}
-
-	.release-cover {
-		width: 240px;
-		height: 240px;
-		overflow: hidden;
-		position: relative;
-		border: 3px inset #c0c0c0;
-		box-shadow:
-			inset 2px 2px 0 #ffffff,
-			inset -2px -2px 0 #808080;
-		background: #c0c0c0;
-		transition: all 0.3s ease;
-	}
-
-	.release-cover img {
-		width: 100%;
-		height: 100%;
-		object-fit: cover;
-	}
-
-	.release-item:hover .release-cover {
-		border: 3px outset #c0c0c0;
-		box-shadow:
-			outset 2px 2px 0 #ffffff,
-			outset -2px -2px 0 #808080;
-		background: #d4d0c8;
-		transform: scale(1.02);
-	}
-
-	.release-item:hover .release-title {
-		color: #ffffff;
-	}
-
-	.release-title {
-		font-family: 'MS Sans Serif', 'Courier New', monospace;
-		font-size: 18px;
-		font-weight: bold;
-		color: #000;
-		margin: 0;
-		letter-spacing: 1px;
-		text-align: center;
-		width: 240px;
-		padding: 10px 16px;
-		transition: all 0.3s ease;
-	}
-
-	/* Адаптивность для секции релизов */
-	@media (max-width: 768px) {
-		.email-header {
-			top: 15px;
-			right: 15px;
-			width: auto;
-			max-width: calc(100vw - 30px);
-			transform: translateX(15px);
-		}
-
-		.email-link {
-			font-size: 18px;
-			letter-spacing: 1.5px;
-			padding: 10px 12px;
-		}
-
-		.minimize-btn {
-			top: 6px;
-			right: 6px;
-			width: 20px;
-			height: 20px;
-			font-size: 12px;
-		}
-
-		.music-btn {
-			font-size: 14px;
-			padding: 10px 20px;
-			min-width: 100px;
-			height: 36px;
-		}
-
-		.releases-section {
-			top: 85px;
-			right: 15px;
-			height: calc(100vh - 100px);
-			height: calc(100dvh - 100px);
-			padding: 15px;
-		}
-
-		.music-btn-container {
-			top: 112px;
-			right: 37px;
-		}
-
-		.releases-container {
-			max-width: 240px;
-		}
-
-		.releases-list {
-			padding: 15px;
-			gap: 15px;
-		}
-
-		.releases-list {
-			gap: 35px;
-		}
-
-		.release-cover {
-			width: 200px;
-			height: 200px;
-		}
-
-		.release-title {
-			font-size: 18px;
-			width: 200px;
-		}
-	}
-
-	@media (max-width: 480px) {
-		.email-header {
-			top: 10px;
-			right: 10px;
-			width: auto;
-			max-width: calc(100vw - 20px);
-			transform: translateX(10px);
-		}
-
-		.email-link {
-			font-size: 16px;
-			letter-spacing: 1px;
-			padding: 8px 10px;
-		}
-
-		.minimize-btn {
-			top: 4px;
-			right: 4px;
-			width: 18px;
-			height: 18px;
-			font-size: 10px;
-		}
-
-		.music-btn {
-			font-size: 12px;
-			padding: 8px 16px;
-			min-width: 80px;
-			height: 32px;
-		}
-
-		.releases-section {
-			top: 70px;
-			right: 10px;
-			height: calc(100vh - 80px);
-			height: calc(100dvh - 80px);
-			padding: 10px;
-		}
-
-		.music-btn-container {
-			top: 70px;
-			right: 10px;
-		}
-
-		.releases-container {
-			max-width: 200px;
-		}
-
-		.releases-list {
-			padding: 12px;
-			gap: 12px;
-		}
-
-		.releases-list {
-			gap: 30px;
-		}
-
-		.release-cover {
-			width: 180px;
-			height: 180px;
-		}
-
-		.release-title {
-			font-size: 16px;
-			width: 180px;
-		}
 	}
 </style>
