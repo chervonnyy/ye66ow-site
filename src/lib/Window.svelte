@@ -39,6 +39,15 @@
 	let windowElement: HTMLDivElement;
 	let animationFrameId: number;
 
+	// Переменные для ресайза
+	let isResizing = false;
+	let resizeStartX = 0;
+	let resizeStartY = 0;
+	let resizeStartWidth = 0;
+	let resizeStartHeight = 0;
+	let resizeStartWindowX = 0;
+	let resizeStartWindowY = 0;
+
 	// Функции управления окном
 	function minimizeWindow(event?: Event) {
 		if (event) {
@@ -115,6 +124,79 @@
 		// Возвращаем в центр экрана
 		windowX = (window.innerWidth - 400) / 2;
 		windowY = (window.innerHeight - 500) / 2;
+	}
+
+	// Функции для ресайза окна
+	function startResize(event: MouseEvent | TouchEvent) {
+		if (isInTrash || isMinimized || isMaximized) return;
+
+		event.preventDefault();
+		event.stopPropagation();
+		event.stopImmediatePropagation();
+
+		isResizing = true;
+		const clientX = 'touches' in event ? event.touches[0].clientX : event.clientX;
+		const clientY = 'touches' in event ? event.touches[0].clientY : event.clientY;
+
+		resizeStartX = clientX;
+		resizeStartY = clientY;
+		resizeStartWidth = windowWidth;
+		resizeStartHeight = windowHeight;
+		resizeStartWindowX = windowX;
+		resizeStartWindowY = windowY;
+
+		// Добавляем обработчики событий
+		document.addEventListener('mousemove', handleResize);
+		document.addEventListener('mouseup', stopResize);
+		document.addEventListener('touchmove', handleResize);
+		document.addEventListener('touchend', stopResize);
+	}
+
+	function handleResize(event: MouseEvent | TouchEvent) {
+		if (!isResizing) return;
+
+		event.preventDefault();
+		event.stopPropagation();
+
+		const clientX = 'touches' in event ? event.touches[0].clientX : event.clientX;
+		const clientY = 'touches' in event ? event.touches[0].clientY : event.clientY;
+
+		const deltaX = clientX - resizeStartX;
+		const deltaY = clientY - resizeStartY;
+
+		// Вычисляем новый размер
+		const newWidth = Math.max(200, Math.min(800, resizeStartWidth + deltaX));
+		const newHeight = Math.max(150, Math.min(600, resizeStartHeight + deltaY));
+
+		// Обновляем размер окна
+		windowWidth = newWidth;
+		windowHeight = newHeight;
+
+		// Проверяем, не выходит ли окно за границы экрана
+		const maxX = window.innerWidth - windowWidth;
+		const maxY = window.innerHeight - windowHeight;
+
+		if (windowX > maxX) {
+			windowX = maxX;
+		}
+		if (windowY > maxY) {
+			windowY = maxY;
+		}
+	}
+
+	function stopResize(event: MouseEvent | TouchEvent) {
+		if (!isResizing) return;
+
+		event.preventDefault();
+		event.stopPropagation();
+
+		isResizing = false;
+
+		// Убираем обработчики событий
+		document.removeEventListener('mousemove', handleResize);
+		document.removeEventListener('mouseup', stopResize);
+		document.removeEventListener('touchmove', handleResize);
+		document.removeEventListener('touchend', stopResize);
 	}
 
 	// Функции перетаскивания (поддержка мыши и touch)
@@ -236,6 +318,7 @@
 		class:maximized={isMaximized}
 		class:in-trash={isInTrash}
 		class:dragging={isDragging}
+		class:resizing={isResizing}
 		style="left: {windowX}px; top: {windowY}px; width: {windowWidth}px; height: {windowHeight}px; z-index: {zIndex};"
 		on:click={isInTrash ? restoreFromTrash : handleWindowClick}
 		on:keydown={isInTrash ? (e) => e.key === 'Enter' && restoreFromTrash() : undefined}
@@ -324,6 +407,19 @@
 				<div class="trash-title">{title}</div>
 			</div>
 		{/if}
+
+		<!-- Ресайз контрол в правом нижнем углу -->
+		{#if !isInTrash && !isMinimized && !isMaximized}
+			<div
+				class="resize-handle"
+				on:mousedown={startResize}
+				on:touchstart={startResize}
+				title="Изменить размер окна"
+				role="button"
+				tabindex="0"
+				aria-label="Изменить размер окна"
+			></div>
+		{/if}
 	</div>
 {/if}
 
@@ -368,6 +464,10 @@
 			4px 4px 0 #808080,
 			inset 1px 1px 0 #ffffff,
 			0 0 20px rgba(0, 0, 0, 0.3);
+		transition: none !important;
+	}
+
+	.retro-window.resizing {
 		transition: none !important;
 	}
 
@@ -883,5 +983,34 @@
 			touch-action: manipulation;
 			-webkit-tap-highlight-color: transparent;
 		}
+	}
+
+	/* Ресайз контрол */
+	.resize-handle {
+		position: absolute;
+		bottom: 0;
+		right: 0;
+		width: 16px;
+		height: 16px;
+		background: linear-gradient(135deg, #c0c0c0 0%, #a0a0a0 50%, #808080 100%);
+		border: 1px outset #c0c0c0;
+		cursor: nw-resize;
+		z-index: 10;
+		user-select: none;
+	}
+
+	.resize-handle:hover {
+		background: linear-gradient(135deg, #d0d0d0 0%, #b0b0b0 50%, #909090 100%);
+	}
+
+	.resize-handle:active {
+		background: linear-gradient(135deg, #a0a0a0 0%, #808080 50%, #606060 100%);
+		border: 1px inset #c0c0c0;
+	}
+
+	/* Стили для ресайза */
+	.retro-window.resizing .resize-handle {
+		background: linear-gradient(135deg, #a0a0a0 0%, #808080 50%, #606060 100%);
+		border: 1px inset #c0c0c0;
 	}
 </style>
