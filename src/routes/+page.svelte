@@ -36,7 +36,29 @@
 	let desktopFiles: any[] = [];
 	let openWindows: any[] = [];
 
-	// Генерируем случайные позиции для окон
+	// Глобальная система управления z-index
+	let globalZIndex = 1000;
+	let windowZIndexes = new Map<string, number>();
+
+	// Функция для получения следующего z-index
+	function getNextZIndex(): number {
+		globalZIndex += 1;
+		return globalZIndex;
+	}
+
+	// Функция для поднятия окна наверх
+	function bringWindowToFront(windowId: string): number {
+		const newZIndex = getNextZIndex();
+		windowZIndexes.set(windowId, newZIndex);
+		return newZIndex;
+	}
+
+	// Функция для получения z-index окна
+	function getWindowZIndex(windowId: string): number {
+		return windowZIndexes.get(windowId) || 1000;
+	}
+
+	// Генерируем красивые позиции для окон с диагональным размещением
 	function generateRandomPositions() {
 		if (!browser) return;
 
@@ -47,32 +69,63 @@
 		const maxX = window.innerWidth - windowWidth;
 		const maxY = window.innerHeight - windowHeight;
 
-		windowPositions = [
-			{
-				x: Math.random() * Math.max(maxX - 50, 50),
-				y: Math.random() * Math.max(maxY - 50, 50)
-			},
-			{
-				x: Math.random() * Math.max(maxX - 50, 50),
-				y: Math.random() * Math.max(maxY - 50, 50)
-			}
-		];
+		// Для мобильных устройств размещаем окна с диагональным смещением
+		if (isMobile) {
+			// Добавляем небольшую случайность для мобильных
+			const randomOffsetX = (Math.random() - 0.5) * 20; // ±10px случайности
+			const randomOffsetY = (Math.random() - 0.5) * 20;
+
+			windowPositions = [
+				{
+					x: Math.max(20, Math.min(maxX, 20)),
+					y: Math.max(50, Math.min(maxY, 50))
+				},
+				{
+					x: Math.max(20, Math.min(maxX, 20 + 60 + randomOffsetX)), // Смещение по X с случайностью
+					y: Math.max(50, Math.min(maxY, 50 + 80 + randomOffsetY)) // Смещение по Y с случайностью
+				}
+			];
+		} else {
+			// Для десктопа создаем красивое диагональное размещение
+			const centerX = maxX / 2;
+			const centerY = maxY / 2;
+
+			// Добавляем небольшую случайность для более естественного вида
+			const randomOffset1 = (Math.random() - 0.5) * 40; // ±20px случайности
+			const randomOffset2 = (Math.random() - 0.5) * 40;
+
+			// Первое окно - левый верхний угол с отступом
+			const offset1 = 80 + randomOffset1;
+			const x1 = Math.max(50, Math.min(maxX, centerX - offset1));
+			const y1 = Math.max(50, Math.min(maxY, centerY - offset1));
+
+			// Второе окно - правый нижний угол с отступом
+			const offset2 = 120 + randomOffset2;
+			const x2 = Math.max(50, Math.min(maxX, centerX + offset2));
+			const y2 = Math.max(50, Math.min(maxY, centerY + offset2));
+
+			windowPositions = [
+				{ x: x1, y: y1 },
+				{ x: x2, y: y2 }
+			];
+		}
 	}
 
 	// Обработчики событий для взаимодействия окон и файлов
 	function handleWindowClose(event: Event) {
 		const customEvent = event as CustomEvent;
 		const windowData = customEvent.detail;
-		const fileName = `${windowData.title.toLowerCase().replace(/\s+/g, '-')}.${windowData.text1 === 'Music Release' ? 'mp3' : 'txt'}`;
 
-		// Скрываем окно вместо удаления
-		const windowIndex = openWindows.findIndex((window) => window.fileId === windowData.fileId);
-		if (windowIndex !== -1) {
-			openWindows[windowIndex] = {
-				...openWindows[windowIndex],
-				isVisible: false
-			};
-		}
+		// Скрываем только конкретное окно, не влияя на другие
+		openWindows = openWindows.map((window) => {
+			if (window.fileId === windowData.fileId) {
+				return {
+					...window,
+					isVisible: false
+				};
+			}
+			return window; // Остальные окна остаются без изменений
+		});
 
 		// Обновляем windowData в соответствующем файле
 		const fileIndex = desktopFiles.findIndex((file) => file.fileId === windowData.fileId);
@@ -90,24 +143,32 @@
 	function handleFileToggle(event: Event) {
 		const customEvent = event as CustomEvent;
 		const fileData = customEvent.detail;
-		const fileName = `${fileData.title.toLowerCase().replace(/\s+/g, '-')}.${fileData.text1 === 'Music Release' ? 'mp3' : 'txt'}`;
 
 		// Ищем соответствующее окно по уникальному ID файла
 		const windowIndex = openWindows.findIndex((window) => window.fileId === fileData.fileId);
 
 		if (windowIndex !== -1) {
-			// Переключаем видимость существующего окна
-			openWindows[windowIndex] = {
-				...openWindows[windowIndex],
-				isVisible: !openWindows[windowIndex].isVisible
-			};
+			// Переключаем видимость существующего окна независимо от других
+			openWindows = openWindows.map((window, index) => {
+				if (index === windowIndex) {
+					return {
+						...window,
+						isVisible: !window.isVisible
+					};
+				}
+				return window; // Остальные окна остаются без изменений
+			});
 		} else {
 			// Создаем новое окно, если его нет
+			const windowId = fileData.fileId;
+			const zIndex = getNextZIndex();
+			windowZIndexes.set(windowId, zIndex);
+
 			openWindows = [
 				...openWindows,
 				{
 					id: Date.now(),
-					fileId: fileData.fileId,
+					fileId: windowId,
 					title: fileData.title,
 					icon: fileData.icon,
 					image: fileData.image,
@@ -116,7 +177,8 @@
 					text2: fileData.text2,
 					x: fileData.x || (window.innerWidth - 400) / 2,
 					y: fileData.y || (window.innerHeight - 500) / 2,
-					isVisible: true
+					isVisible: true,
+					zIndex: zIndex
 				}
 			];
 		}
@@ -581,15 +643,9 @@
 		isMobile = isMobileDevice || isSmallScreen;
 
 		if (isMobile) {
-			// На мобильных устройствах снижаем частоту обновления
-			if (isVerySmallScreen) {
-				// Для очень маленьких экранов еще больше оптимизируем
-				maxFrameSkip = 3; // Пропускаем 3 из 4 кадров
-				targetFPS = 20; // Очень низкий FPS
-			} else {
-				maxFrameSkip = 2; // Пропускаем 2 из 3 кадров
-				targetFPS = 30; // Целевой FPS для мобильных
-			}
+			// На мобильных устройствах полностью отключаем анимацию ASCII
+			maxFrameSkip = 999; // Отключаем анимацию
+			targetFPS = 0; // Останавливаем анимацию
 		} else {
 			maxFrameSkip = 0; // На десктопе обновляем каждый кадр
 			targetFPS = 60;
@@ -835,13 +891,19 @@
 
 		let ascii = '';
 
-		// Оптимизация для мобильных: упрощаем расчеты
+		// Для мобильных устройств скрываем ASCII и используем только CSS фон
+		if (isMobile) {
+			asciiContainer.textContent = '';
+			return;
+		}
+
+		// Оптимизация для десктопа: упрощаем расчеты
 		const isMathSet = currentSymbolSet === 'math';
 		const isFlowingSet = currentSymbolSet === 'flowing';
 		const isWavesSet = currentSymbolSet === 'waves';
 		const isOrganicSet = currentSymbolSet === 'organic';
 		const isVerySmallScreen = window.innerWidth <= 480;
-		const timeFactor = isMobile ? (isVerySmallScreen ? 0.3 : 0.5) : 1;
+		const timeFactor = 1; // Только для десктопа
 		const currentTime = time * timeFactor;
 
 		// Добавляем интерактивные переменные
@@ -965,6 +1027,11 @@
 	}
 
 	function animate() {
+		// На мобильных устройствах не запускаем анимацию
+		if (isMobile) {
+			return;
+		}
+
 		const now = performance.now();
 		const deltaTime = now - lastFrameTime;
 
@@ -975,16 +1042,6 @@
 		}
 
 		lastFrameTime = now;
-
-		// Пропускаем кадры на мобильных устройствах
-		if (isMobile) {
-			frameSkip++;
-			if (frameSkip < maxFrameSkip) {
-				animationId = requestAnimationFrame(animate);
-				return;
-			}
-			frameSkip = 0;
-		}
 
 		time += 1;
 		autoChangeSymbols();
@@ -1000,46 +1057,55 @@
 		}, 1000);
 
 		if (browser) {
-			// Генерируем случайные позиции для окон
-			generateRandomPositions();
+			// Небольшая задержка для правильного определения размеров экрана
+			setTimeout(() => {
+				// Генерируем позиции для окон с минимальным перекрытием
+				generateRandomPositions();
 
-			// Инициализируем начальные окна
-			const isMobile = window.innerWidth <= 768;
-			openWindows = releasesData.map((release, index) => ({
-				id: Date.now() + index,
-				fileId: `file-${index}`,
-				title: release.title,
-				icon: '🎵',
-				image: release.cover['800'],
-				link: release.link,
-				text1: 'Music Release',
-				text2: '@ye66ow',
-				x: windowPositions[index]?.x || (isMobile ? 20 : 100),
-				y: windowPositions[index]?.y || (isMobile ? 50 : 150),
-				isVisible: true
-			}));
+				// Инициализируем начальные окна - все открыты
+				const isMobile = window.innerWidth <= 768;
+				openWindows = releasesData.map((release, index) => {
+					const windowId = `file-${index}`;
+					const zIndex = getNextZIndex();
+					windowZIndexes.set(windowId, zIndex);
 
-			// Создаем файлы на рабочем столе для каждого релиза
-			desktopFiles = releasesData.map((release, index) => ({
-				id: Date.now() + index + 1000,
-				fileId: `file-${index}`,
-				fileName: release.title,
-				fileIcon: '🎵',
-				fileType: 'mp3',
-				windowData: {
+					return {
+						id: Date.now() + index,
+						fileId: windowId,
+						title: release.title,
+						icon: '🎵',
+						image: release.cover['800'],
+						link: release.link,
+						text1: 'Music Release',
+						text2: '@ye66ow',
+						x: windowPositions[index]?.x || (isMobile ? 20 : 100),
+						y: windowPositions[index]?.y || (isMobile ? 50 : 150),
+						isVisible: true, // Все окна открыты при старте
+						zIndex: zIndex
+					};
+				});
+
+				// Создаем файлы на рабочем столе для каждого релиза
+				desktopFiles = releasesData.map((release, index) => ({
+					id: Date.now() + index + 1000,
 					fileId: `file-${index}`,
-					title: release.title,
-					icon: '🎵',
-					image: release.cover['800'],
-					link: release.link,
-					text1: 'Music Release',
-					text2: '@ye66ow',
-					x: windowPositions[index]?.x || 100,
-					y: windowPositions[index]?.y || 150
-				},
-				x: 50 + index * 200,
-				y: 50
-			}));
+					fileName: release.title,
+					fileType: 'mp3',
+					windowData: {
+						fileId: `file-${index}`,
+						title: release.title,
+						icon: '🎵',
+						image: release.cover['800'],
+						link: release.link,
+						text1: 'Music Release',
+						text2: '@ye66ow',
+						x: windowPositions[index]?.x || 100,
+						y: windowPositions[index]?.y || 150
+					},
+					x: 50 + index * 200,
+					y: 50
+				}));
+			}, 100); // Задержка 100ms для правильного определения размеров
 
 			// Добавляем обработчики событий
 			window.addEventListener('windowClose', handleWindowClose);
@@ -1082,7 +1148,10 @@
 
 				setTimeout(() => {
 					generateASCII();
-					animate();
+					// Запускаем анимацию только на десктопе
+					if (!isMobile) {
+						animate();
+					}
 				}, 100);
 			};
 
@@ -1102,6 +1171,23 @@
 					calculateDimensions();
 					generateASCII();
 					generateRandomPositions(); // Перегенерируем позиции окон
+
+					// Обновляем позиции существующих окон
+					openWindows = openWindows.map((window, index) => ({
+						...window,
+						x: windowPositions[index]?.x || window.x,
+						y: windowPositions[index]?.y || window.y
+					}));
+
+					// Если переключились с мобильного на десктоп, запускаем анимацию
+					if (!isMobile && !animationId) {
+						animate();
+					}
+					// Если переключились с десктопа на мобильный, останавливаем анимацию
+					else if (isMobile && animationId) {
+						cancelAnimationFrame(animationId);
+						animationId = 0;
+					}
 				}, 50);
 			};
 
@@ -1214,7 +1300,7 @@
 
 	<!-- Окна с релизами -->
 	{#each openWindows as window, index}
-		{#if window.isVisible !== false}
+		{#if window.isVisible === true}
 			<Window
 				fileId={window.fileId}
 				title={window.title}
@@ -1225,6 +1311,13 @@
 				text2={window.text2}
 				initialX={window.x}
 				initialY={window.y}
+				zIndex={window.zIndex}
+				on:bringToFront={(e) => {
+					const newZIndex = bringWindowToFront(window.fileId);
+					openWindows = openWindows.map((w) =>
+						w.fileId === window.fileId ? { ...w, zIndex: newZIndex } : w
+					);
+				}}
 			/>
 		{/if}
 	{/each}
@@ -1233,7 +1326,6 @@
 	{#each desktopFiles as file}
 		<DesktopFile
 			fileName={file.fileName}
-			fileIcon={file.fileIcon}
 			fileType={file.fileType}
 			windowData={file.windowData}
 			initialX={file.x}
@@ -1341,22 +1433,76 @@
 	/* Mobile Responsive */
 	@media (max-width: 768px) {
 		.ascii-art {
-			font-size: 0.7rem; /* Увеличиваем для планшетов */
-			line-height: 0.9;
+			/* Скрываем ASCII на мобильных */
+			display: none;
+		}
+
+		/* Красивый сине-зеленый фон для мобильных */
+		.ascii-background {
+			background: linear-gradient(
+				135deg,
+				#2c5aa0 0%,
+				#1e3a8a 25%,
+				#0f172a 50%,
+				#1e3a8a 75%,
+				#2c5aa0 100%
+			);
+			background-size: 400% 400%;
+			animation: gradientShift 8s ease infinite;
+		}
+
+		@keyframes gradientShift {
+			0% {
+				background-position: 0% 50%;
+			}
+			50% {
+				background-position: 100% 50%;
+			}
+			100% {
+				background-position: 0% 50%;
+			}
 		}
 	}
 
 	@media (max-width: 480px) {
 		.ascii-art {
-			font-size: 0.6rem; /* Увеличиваем для мобильных */
-			line-height: 0.8;
+			/* Скрываем ASCII на мобильных */
+			display: none;
+		}
+
+		/* Красивый сине-зеленый фон для мобильных */
+		.ascii-background {
+			background: linear-gradient(
+				135deg,
+				#2c5aa0 0%,
+				#1e3a8a 25%,
+				#0f172a 50%,
+				#1e3a8a 75%,
+				#2c5aa0 100%
+			);
+			background-size: 400% 400%;
+			animation: gradientShift 8s ease infinite;
 		}
 	}
 
 	@media (max-width: 320px) {
 		.ascii-art {
-			font-size: 0.5rem; /* Увеличиваем для маленьких экранов */
-			line-height: 0.7;
+			/* Скрываем ASCII на мобильных */
+			display: none;
+		}
+
+		/* Красивый сине-зеленый фон для мобильных */
+		.ascii-background {
+			background: linear-gradient(
+				135deg,
+				#2c5aa0 0%,
+				#1e3a8a 25%,
+				#0f172a 50%,
+				#1e3a8a 75%,
+				#2c5aa0 100%
+			);
+			background-size: 400% 400%;
+			animation: gradientShift 8s ease infinite;
 		}
 	}
 

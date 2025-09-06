@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
+	import { gsap } from 'gsap';
 
 	// Пропсы компонента
 	export let fileName: string;
@@ -16,6 +17,9 @@
 	let fileY = initialY;
 	let dragThreshold = 5; // Минимальное расстояние для начала перетаскивания
 	let hasMoved = false;
+	let zIndex = 500; // Базовый z-index
+	let fileElement: HTMLDivElement;
+	let animationFrameId: number;
 
 	// Функция для переключения видимости окна
 	function toggleWindow() {
@@ -41,6 +45,12 @@
 		dragStartX = clientX - fileX;
 		dragStartY = clientY - fileY;
 
+		// Поднимаем элемент наверх при начале перетаскивания
+		zIndex = 2000;
+		if (fileElement) {
+			gsap.set(fileElement, { zIndex: zIndex });
+		}
+
 		document.addEventListener('mousemove', handleDrag);
 		document.addEventListener('mouseup', stopDrag);
 		document.addEventListener('touchmove', handleDrag, { passive: false });
@@ -64,15 +74,27 @@
 		}
 
 		if (isDragging) {
-			fileX = clientX - dragStartX;
-			fileY = clientY - dragStartY;
+			// Отменяем предыдущий кадр анимации
+			if (animationFrameId) {
+				cancelAnimationFrame(animationFrameId);
+			}
 
-			// Ограничиваем перемещение границами экрана
-			const isMobile = window.innerWidth <= 768;
-			const fileWidth = isMobile ? 100 : 180;
-			const fileHeight = isMobile ? 120 : 210;
-			fileX = Math.max(0, Math.min(fileX, window.innerWidth - fileWidth));
-			fileY = Math.max(0, Math.min(fileY, window.innerHeight - fileHeight));
+			// Используем requestAnimationFrame для плавного обновления
+			animationFrameId = requestAnimationFrame(() => {
+				const newX = clientX - dragStartX;
+				const newY = clientY - dragStartY;
+
+				// Ограничиваем перемещение границами экрана
+				const isMobile = window.innerWidth <= 768;
+				const fileWidth = isMobile ? 100 : 180;
+				const fileHeight = isMobile ? 120 : 210;
+				const constrainedX = Math.max(0, Math.min(newX, window.innerWidth - fileWidth));
+				const constrainedY = Math.max(0, Math.min(newY, window.innerHeight - fileHeight));
+
+				// Прямое изменение позиции без анимации для плавного перетаскивания
+				fileX = constrainedX;
+				fileY = constrainedY;
+			});
 		}
 	}
 
@@ -82,10 +104,22 @@
 		document.removeEventListener('touchmove', handleDrag);
 		document.removeEventListener('touchend', stopDrag);
 
+		// Отменяем анимацию
+		if (animationFrameId) {
+			cancelAnimationFrame(animationFrameId);
+			animationFrameId = 0;
+		}
+
 		// Если было перетаскивание, не открываем окно
 		if (isDragging) {
 			isDragging = false;
 			hasMoved = false;
+
+			// Возвращаем z-index к нормальному значению
+			zIndex = 500;
+			if (fileElement) {
+				gsap.set(fileElement, { zIndex: zIndex });
+			}
 			return;
 		}
 
@@ -123,6 +157,7 @@
 </script>
 
 <div
+	bind:this={fileElement}
 	class="desktop-file"
 	class:selected={isSelected}
 	class:dragging={isDragging}
@@ -131,7 +166,7 @@
 	class:txt={fileType === 'txt'}
 	class:jpg={fileType === 'jpg'}
 	class:png={fileType === 'png'}
-	style="left: {fileX}px; top: {fileY}px;"
+	style="left: {fileX}px; top: {fileY}px; z-index: {zIndex};"
 	on:mousedown={startDrag}
 	on:touchstart={startDrag}
 	on:click={handleClick}
@@ -165,21 +200,20 @@
 		padding: 18px 12px;
 		cursor: grab;
 		user-select: none;
-		z-index: 500;
-		transition:
-			transform 0.2s ease,
-			box-shadow 0.2s ease,
-			opacity 0.2s ease;
+		will-change: transform;
+		/* Убираем все эффекты, которые могут создавать артефакты */
+		outline: none;
+		border: none;
+		box-shadow: none;
 	}
 
 	.desktop-file.selected {
 		background: rgba(0, 0, 255, 0.2);
-		border-radius: 4px;
 	}
 
 	.desktop-file.dragging {
-		z-index: 1000;
 		cursor: grabbing;
+		transition: none !important;
 	}
 
 	.file-icon {
@@ -191,11 +225,6 @@
 		font-size: 48px;
 		margin-bottom: 12px;
 		background: #c0c0c0;
-		border: 3px outset #c0c0c0;
-		border-radius: 3px;
-		box-shadow:
-			3px 3px 0 #808080,
-			inset 2px 2px 0 #ffffff;
 		position: relative;
 	}
 
@@ -215,10 +244,7 @@
 		right: -6px;
 		bottom: -3px;
 		background: #000;
-		border: 1px solid #fff;
-		border-radius: 3px;
 		z-index: -1;
-		box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
 	}
 
 	.file-name-text {
@@ -227,7 +253,6 @@
 		font-size: 18px;
 		font-weight: bold;
 		color: #fff;
-		text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.8);
 		z-index: 1;
 		white-space: nowrap;
 		overflow: hidden;
@@ -240,7 +265,6 @@
 		width: 100%;
 		height: 100%;
 		background: #ffffff;
-		border: 1px solid #000;
 		overflow: hidden;
 	}
 
@@ -274,10 +298,6 @@
 			width: 40px;
 			height: 40px;
 			font-size: 28px;
-		}
-
-		.default-file-icon {
-			border-width: 1px;
 		}
 
 		.file-corner {

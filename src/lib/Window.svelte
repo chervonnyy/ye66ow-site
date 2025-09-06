@@ -1,5 +1,9 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, createEventDispatcher } from 'svelte';
+	import { gsap } from 'gsap';
+
+	// Создаем диспетчер событий
+	const dispatch = createEventDispatcher();
 
 	// Пропсы компонента
 	export let title: string = 'MyPhone2006';
@@ -11,6 +15,7 @@
 	export let initialX: number = 0;
 	export let initialY: number = 0;
 	export let fileId: string = '';
+	export let zIndex: number = 1000;
 
 	// Состояние окна
 	let isMinimized = false;
@@ -31,12 +36,15 @@
 	let dragStartY = 0;
 	let dragStartWindowX = 0;
 	let dragStartWindowY = 0;
+	let windowElement: HTMLDivElement;
+	let animationFrameId: number;
 
 	// Функции управления окном
 	function minimizeWindow(event?: Event) {
 		if (event) {
 			event.preventDefault();
 			event.stopPropagation();
+			event.stopImmediatePropagation();
 		}
 		isMinimized = !isMinimized;
 		isMaximized = false;
@@ -46,6 +54,7 @@
 		if (event) {
 			event.preventDefault();
 			event.stopPropagation();
+			event.stopImmediatePropagation();
 		}
 		if (isMaximized) {
 			// Восстанавливаем размер
@@ -55,6 +64,10 @@
 			windowWidth = 400;
 			windowHeight = 500;
 		} else {
+			// Если окно свернуто, сначала разворачиваем его
+			if (isMinimized) {
+				isMinimized = false;
+			}
 			// Сохраняем текущую позицию
 			dragStartWindowX = windowX;
 			dragStartWindowY = windowY;
@@ -71,6 +84,7 @@
 		if (event) {
 			event.preventDefault();
 			event.stopPropagation();
+			event.stopImmediatePropagation();
 		}
 		// Эмитируем событие для родительского компонента
 		// чтобы он мог создать файл на рабочем столе
@@ -116,6 +130,10 @@
 		dragStartY = clientY;
 		dragStartWindowX = windowX;
 		dragStartWindowY = windowY;
+
+		// Эмитируем событие для поднятия окна наверх
+		dispatch('bringToFront');
+
 		document.addEventListener('mousemove', handleDrag);
 		document.addEventListener('mouseup', stopDrag);
 		document.addEventListener('touchmove', handleDrag, { passive: false });
@@ -129,12 +147,24 @@
 		const clientX = 'touches' in event ? event.touches[0].clientX : event.clientX;
 		const clientY = 'touches' in event ? event.touches[0].clientY : event.clientY;
 
-		windowX = dragStartWindowX + (clientX - dragStartX);
-		windowY = dragStartWindowY + (clientY - dragStartY);
+		// Отменяем предыдущий кадр анимации
+		if (animationFrameId) {
+			cancelAnimationFrame(animationFrameId);
+		}
 
-		// Ограничиваем перемещение границами экрана
-		windowX = Math.max(0, Math.min(windowX, window.innerWidth - windowWidth));
-		windowY = Math.max(0, Math.min(windowY, window.innerHeight - windowHeight));
+		// Используем requestAnimationFrame для плавного обновления
+		animationFrameId = requestAnimationFrame(() => {
+			const newX = dragStartWindowX + (clientX - dragStartX);
+			const newY = dragStartWindowY + (clientY - dragStartY);
+
+			// Ограничиваем перемещение границами экрана
+			const constrainedX = Math.max(0, Math.min(newX, window.innerWidth - windowWidth));
+			const constrainedY = Math.max(0, Math.min(newY, window.innerHeight - windowHeight));
+
+			// Прямое изменение позиции без анимации для плавного перетаскивания
+			windowX = constrainedX;
+			windowY = constrainedY;
+		});
 	}
 
 	function stopDrag() {
@@ -143,6 +173,12 @@
 		document.removeEventListener('mouseup', stopDrag);
 		document.removeEventListener('touchmove', handleDrag);
 		document.removeEventListener('touchend', stopDrag);
+
+		// Отменяем анимацию
+		if (animationFrameId) {
+			cancelAnimationFrame(animationFrameId);
+			animationFrameId = 0;
+		}
 	}
 
 	// Функция для открытия ссылки
@@ -151,6 +187,15 @@
 			event.preventDefault();
 			event.stopPropagation();
 			window.open(link, '_blank', 'noopener,noreferrer');
+		}
+	}
+
+	// Функция для поднятия окна наверх при клике
+	function handleWindowClick(event: MouseEvent) {
+		// Поднимаем окно наверх только если клик не по кнопкам управления
+		const target = event.target as HTMLElement;
+		if (!target.closest('.window-controls') && !target.closest('.title-bar')) {
+			dispatch('bringToFront');
 		}
 	}
 
@@ -185,16 +230,18 @@
 
 {#if !isClosed || isInTrash}
 	<div
+		bind:this={windowElement}
 		class="retro-window"
 		class:minimized={isMinimized}
 		class:maximized={isMaximized}
 		class:in-trash={isInTrash}
-		style="left: {windowX}px; top: {windowY}px; width: {windowWidth}px; height: {windowHeight}px;"
-		on:click={isInTrash ? restoreFromTrash : undefined}
+		class:dragging={isDragging}
+		style="left: {windowX}px; top: {windowY}px; width: {windowWidth}px; height: {windowHeight}px; z-index: {zIndex};"
+		on:click={isInTrash ? restoreFromTrash : handleWindowClick}
 		on:keydown={isInTrash ? (e) => e.key === 'Enter' && restoreFromTrash() : undefined}
-		role={isInTrash ? 'button' : undefined}
-		tabindex={isInTrash ? 0 : undefined}
-		aria-label={isInTrash ? `Восстановить окно ${title}` : undefined}
+		role={isInTrash ? 'button' : 'dialog'}
+		tabindex={isInTrash ? 0 : -1}
+		aria-label={isInTrash ? `Восстановить окно ${title}` : `Окно ${title}`}
 	>
 		<!-- Заголовок окна -->
 		<div
@@ -215,12 +262,16 @@
 						class="control-btn minimize"
 						on:click={minimizeWindow}
 						on:touchend={minimizeWindow}
+						on:mousedown|stopPropagation
+						on:touchstart|stopPropagation
 						title="Свернуть">_</button
 					>
 					<button
 						class="control-btn maximize"
 						on:click={maximizeWindow}
 						on:touchend={maximizeWindow}
+						on:mousedown|stopPropagation
+						on:touchstart|stopPropagation
 						title="Развернуть">□</button
 					>
 				{/if}
@@ -228,6 +279,8 @@
 					class="control-btn close"
 					on:click={closeWindow}
 					on:touchend={closeWindow}
+					on:mousedown|stopPropagation
+					on:touchstart|stopPropagation
 					title="Закрыть">×</button
 				>
 			</div>
@@ -284,9 +337,8 @@
 			2px 2px 0 #808080,
 			inset 1px 1px 0 #ffffff;
 		font-family: 'MS Sans Serif', 'Courier New', monospace;
-		z-index: 1000;
-		transition: all 0.3s ease;
 		user-select: none;
+		will-change: transform;
 	}
 
 	.retro-window.minimized {
@@ -307,6 +359,16 @@
 		top: 0 !important;
 		left: 0 !important;
 		transform: none !important;
+	}
+
+	.retro-window.dragging {
+		transform: scale(1.02);
+		box-shadow:
+			8px 8px 0 #404040,
+			4px 4px 0 #808080,
+			inset 1px 1px 0 #ffffff,
+			0 0 20px rgba(0, 0, 0, 0.3);
+		transition: none !important;
 	}
 
 	/* Заголовок окна */
