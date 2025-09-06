@@ -610,6 +610,89 @@
 			' ',
 			' ',
 			' '
+		],
+		// Специальный набор для мобилки - решетки, цифры, пустые зоны
+		mobile: [
+			'#',
+			'##',
+			'###',
+			'####',
+			'#####',
+			'0',
+			'1',
+			'2',
+			'3',
+			'4',
+			'5',
+			'6',
+			'7',
+			'8',
+			'9',
+			'█',
+			'▓',
+			'▒',
+			'░',
+			'·',
+			'◐',
+			'◑',
+			'◒',
+			'◓',
+			'◔',
+			'◕',
+			'◖',
+			'◗',
+			'◘',
+			'◙',
+			'◚',
+			'◛',
+			'◜',
+			'◝',
+			'◞',
+			'◟',
+			'◠',
+			'◡',
+			'◢',
+			'◣',
+			'◤',
+			'◥',
+			'◦',
+			'◯',
+			'◰',
+			'◱',
+			'◲',
+			'◳',
+			'◴',
+			'◵',
+			'◶',
+			'◷',
+			'◸',
+			'◹',
+			'◺',
+			'◻',
+			'◼',
+			'◽',
+			'◾',
+			'◿',
+			' ',
+			' ',
+			' ',
+			' ',
+			' ',
+			' ',
+			' ',
+			' ',
+			' ',
+			' ',
+			' ',
+			' ',
+			' ',
+			' ',
+			' ',
+			' ',
+			' ',
+			' ',
+			' ',
+			' '
 		]
 	};
 
@@ -643,9 +726,9 @@
 		isMobile = isMobileDevice || isSmallScreen;
 
 		if (isMobile) {
-			// На мобильных устройствах полностью отключаем анимацию ASCII
-			maxFrameSkip = 999; // Отключаем анимацию
-			targetFPS = 0; // Останавливаем анимацию
+			// На мобильных устройствах используем оптимизированную анимацию ASCII
+			maxFrameSkip = 3; // Пропускаем кадры для производительности
+			targetFPS = 15; // Снижаем FPS для мобилки
 		} else {
 			maxFrameSkip = 0; // На десктопе обновляем каждый кадр
 			targetFPS = 60;
@@ -891,9 +974,64 @@
 
 		let ascii = '';
 
-		// Для мобильных устройств скрываем ASCII и используем только CSS фон
+		// Для мобильных устройств используем тот же красивый паттерн, но оптимизированный
 		if (isMobile) {
-			asciiContainer.textContent = '';
+			// Используем тот же паттерн что и на десктопе, но с оптимизацией
+			const timeFactor = 0.3; // Медленнее для производительности
+			const currentTime = time * timeFactor;
+			const isVerySmallScreen = window.innerWidth <= 480;
+
+			// Размер на весь экран для мобилки - подбираем под размер экрана
+			const screenWidth = window.innerWidth;
+			const screenHeight = window.innerHeight;
+
+			// Рассчитываем количество символов для заполнения экрана
+			// Увеличиваем плотность символов для полного покрытия
+			const mobileWidth = Math.floor(screenWidth / 6) + 10; // Больше символов по ширине
+			const mobileHeight = Math.floor(screenHeight / 8) + 10; // Больше символов по высоте
+
+			// Используем специальный набор символов для мобилки
+			const symbols = symbolSets.mobile;
+
+			// Добавляем интерактивные переменные
+			const centerX = mobileWidth / 2;
+			const centerY = mobileHeight / 2;
+			const maxDistance = Math.sqrt(centerX * centerX + centerY * centerY);
+
+			for (let y = 0; y < mobileHeight; y++) {
+				for (let x = 0; x < mobileWidth; x++) {
+					// Создаем красивый и понятный паттерн для мобилки
+					const distanceFromCenter = Math.sqrt((x - centerX) ** 2 + (y - centerY) ** 2);
+					const angleFromCenter = Math.atan2(y - centerY, x - centerX);
+
+					// Создаем волновые паттерны
+					const wave1 = Math.sin(x * 0.1 + currentTime * 0.005) * 0.5;
+					const wave2 = Math.sin(y * 0.15 + currentTime * 0.003) * 0.4;
+					const wave3 = Math.sin((x + y) * 0.08 + currentTime * 0.002) * 0.3;
+
+					// Создаем спиральные эффекты
+					const spiral =
+						Math.sin(distanceFromCenter * 0.1 + angleFromCenter * 2 + currentTime * 0.004) * 0.6;
+
+					// Создаем рябь от центра
+					const ripple = Math.sin(distanceFromCenter * 0.2 - currentTime * 0.008) * 0.4;
+
+					// Создаем шум для детализации
+					const noise = (Math.sin(x * 0.5 + y * 0.3 + currentTime * 0.01) + 1) * 0.2;
+
+					// Комбинируем эффекты для создания красивого паттерна
+					const combined = (wave1 + wave2 + wave3 + spiral + ripple + noise) / 6;
+
+					// Выбираем символ на основе комбинированного значения
+					const symbolIndex = Math.floor(((combined + 1) * (symbols.length - 1)) / 2);
+					const symbol = symbols[Math.max(0, Math.min(symbolIndex, symbols.length - 1))];
+
+					ascii += symbol;
+				}
+				ascii += '\n';
+			}
+
+			asciiContainer.textContent = ascii;
 			return;
 		}
 
@@ -1433,76 +1571,67 @@
 	/* Mobile Responsive */
 	@media (max-width: 768px) {
 		.ascii-art {
-			/* Скрываем ASCII на мобильных */
-			display: none;
+			/* Показываем ASCII на мобильных с крупными символами */
+			display: block;
+			font-size: 1.1rem;
+			line-height: 0.9;
+			opacity: 0.9;
+			white-space: pre;
+			overflow: hidden;
+			width: 100vw;
+			height: 100vh;
+			position: fixed;
+			top: 0;
+			left: 0;
+			z-index: 1;
+			transform: scale(1.1);
+			transform-origin: top left;
+			margin: 0;
+			padding: 0;
 		}
 
-		/* Красивый сине-зеленый фон для мобильных */
+		/* Простой фон для мобильных */
 		.ascii-background {
-			background: linear-gradient(
-				135deg,
-				#2c5aa0 0%,
-				#1e3a8a 25%,
-				#0f172a 50%,
-				#1e3a8a 75%,
-				#2c5aa0 100%
-			);
-			background-size: 400% 400%;
-			animation: gradientShift 8s ease infinite;
-		}
-
-		@keyframes gradientShift {
-			0% {
-				background-position: 0% 50%;
-			}
-			50% {
-				background-position: 100% 50%;
-			}
-			100% {
-				background-position: 0% 50%;
-			}
+			background: #0a0a0a;
 		}
 	}
 
 	@media (max-width: 480px) {
 		.ascii-art {
-			/* Скрываем ASCII на мобильных */
-			display: none;
+			/* Показываем ASCII на очень маленьких экранах с крупными символами */
+			display: block;
+			font-size: 0.9rem;
+			line-height: 0.8;
+			opacity: 0.8;
+			white-space: pre;
+			overflow: hidden;
+			width: 100vw;
+			height: 100vh;
+			position: fixed;
+			top: 0;
+			left: 0;
+			z-index: 1;
+			transform: scale(1.2);
+			transform-origin: top left;
+			margin: 0;
+			padding: 0;
 		}
 
-		/* Красивый сине-зеленый фон для мобильных */
+		/* Простой фон для очень маленьких экранов */
 		.ascii-background {
-			background: linear-gradient(
-				135deg,
-				#2c5aa0 0%,
-				#1e3a8a 25%,
-				#0f172a 50%,
-				#1e3a8a 75%,
-				#2c5aa0 100%
-			);
-			background-size: 400% 400%;
-			animation: gradientShift 8s ease infinite;
+			background: #0a0a0a;
 		}
 	}
 
 	@media (max-width: 320px) {
 		.ascii-art {
-			/* Скрываем ASCII на мобильных */
+			/* Скрываем ASCII на очень маленьких экранах для производительности */
 			display: none;
 		}
 
-		/* Красивый сине-зеленый фон для мобильных */
+		/* Простой фон для очень маленьких экранов */
 		.ascii-background {
-			background: linear-gradient(
-				135deg,
-				#2c5aa0 0%,
-				#1e3a8a 25%,
-				#0f172a 50%,
-				#1e3a8a 75%,
-				#2c5aa0 100%
-			);
-			background-size: 400% 400%;
-			animation: gradientShift 8s ease infinite;
+			background: #0a0a0a;
 		}
 	}
 
