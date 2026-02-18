@@ -885,17 +885,22 @@
 			<span class="dot" aria-hidden="true">·</span>
 			<a href="https://music.apple.com/us/artist/ye66ow/1797884681" target="_blank" rel="noopener noreferrer">Apple Music</a>
 			<span class="dot" aria-hidden="true">·</span>
-			<a href="https://www.instagram.com/ye66oowww" target="_blank" rel="noopener noreferrer">Instagram</a>
+			<a href="https://www.ninaprotocol.com/releases/ye66ow---sami" target="_blank" rel="noopener noreferrer">Nina</a>
+			<br class="mobile-only" />
+			<a class="mobile-only" href="https://www.instagram.com/ye66oowww" target="_blank" rel="noopener noreferrer">Instagram</a>
+			<span class="dot mobile-only" aria-hidden="true">·</span>
+			<a class="mobile-only" href="mailto:{EMAIL}">Say hi</a>
 			<br class="mobile-only" />
 			<a class="mobile-only" href="https://open.spotify.com/playlist/1TLECsOwyzfMvbtfrjUR8X?si=32fc1dbb3afa4135" target="_blank" rel="noopener noreferrer">Peacemusic</a>
-			<span class="dot mobile-only" aria-hidden="true">·</span>
-			<a class="mobile-only" href="mailto:{EMAIL}">Contacts</a>
 		</nav>
-		<a class="bottom-link" href="https://open.spotify.com/playlist/1TLECsOwyzfMvbtfrjUR8X?si=32fc1dbb3afa4135" target="_blank" rel="noopener noreferrer">Peacemusic</a>
-		<span class="bottom-link contact-line">
-			<a href="mailto:{EMAIL}">Contacts</a>
-			<span class="email-hint">{EMAIL}</span>
-		</span>
+		<nav class="links desktop-only">
+			<a href="https://www.instagram.com/ye66oowww" target="_blank" rel="noopener noreferrer">Instagram</a>
+			<span class="dot" aria-hidden="true">·</span>
+			<span class="contact-group"><a href="mailto:{EMAIL}">Say hi</a><span class="email-hint">{EMAIL}</span></span>
+		</nav>
+		<nav class="links desktop-only">
+			<a href="https://open.spotify.com/playlist/1TLECsOwyzfMvbtfrjUR8X?si=32fc1dbb3afa4135" target="_blank" rel="noopener noreferrer">Peacemusic</a>
+		</nav>
 	</div>
 
 	<!-- <button class="panel-toggle" onclick={() => (showPanel = !showPanel)}>
@@ -991,6 +996,13 @@
 		color: #555;
 	}
 
+	.links {
+		display: flex;
+		align-items: baseline;
+		gap: 0.4em;
+		flex-wrap: wrap;
+	}
+
 	.links a {
 		font-family: 'Outfit', 'Helvetica Neue', Arial, sans-serif;
 		font-weight: 300;
@@ -1013,49 +1025,12 @@
 		color: #999;
 	}
 
-	.bottom-link {
-		font-family: 'Outfit', 'Helvetica Neue', Arial, sans-serif;
-		font-weight: 300;
-		color: #111;
-		text-decoration: none;
-		letter-spacing: 0.15em;
-		text-transform: uppercase;
+	.mobile-only {
+		display: none;
+	}
+
+	.desktop-only {
 		margin-top: 1.5rem;
-		transition: color 0.15s;
-	}
-
-	.bottom-link:hover {
-		color: #555;
-	}
-
-	.page.inverted .bottom-link {
-		color: #ddd;
-	}
-
-	.page.inverted .bottom-link:hover {
-		color: #999;
-	}
-
-	.contact-line a {
-		font-family: 'Outfit', 'Helvetica Neue', Arial, sans-serif;
-		font-weight: 300;
-		color: #111;
-		text-decoration: none;
-		letter-spacing: 0.15em;
-		text-transform: uppercase;
-		transition: color 0.15s;
-	}
-
-	.contact-line a:hover {
-		color: #555;
-	}
-
-	.page.inverted .contact-line a {
-		color: #ddd;
-	}
-
-	.page.inverted .contact-line a:hover {
-		color: #999;
 	}
 
 	.email-hint {
@@ -1158,7 +1133,7 @@
 			display: none;
 		}
 
-		.bottom-link {
+		.desktop-only {
 			display: none;
 		}
 
@@ -1166,7 +1141,8 @@
 			display: inline;
 		}
 
-		.links {
+		.links:not(.desktop-only) {
+			display: block;
 			order: 3;
 			text-align: center;
 			padding: 0 2.5rem 0.8rem;
@@ -1279,17 +1255,6 @@
 		}
 
 		.links a {
-			font-size: 0.85rem;
-			letter-spacing: 0.18em;
-		}
-
-		.bottom-link {
-			padding: 0 2rem;
-			font-size: 0.85rem;
-			letter-spacing: 0.18em;
-		}
-
-		.contact-line a {
 			font-size: 0.85rem;
 			letter-spacing: 0.18em;
 		}

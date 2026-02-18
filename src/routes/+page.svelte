@@ -12,7 +12,7 @@
 
 <svelte:head>
 	<title>ye66ow</title>
-	<meta name="description" content="ye66ow — music artist" />
+	<meta name="description" content="peacemusic · new music out now" />
 	<meta
 		name="viewport"
 		content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
@@ -22,15 +22,15 @@
 	<!-- Open Graph -->
 	<meta property="og:type" content="website" />
 	<meta property="og:title" content="ye66ow" />
-	<meta property="og:description" content="ye66ow — music artist" />
+	<meta property="og:description" content="peacemusic · new music out now" />
 	<meta property="og:url" content="https://ye66ow.com" />
-	<meta property="og:image" content="https://ye66ow.com/favicon-512.png" />
+	<meta property="og:image" content="https://ye66ow.com/covers/still-alive-cover-1200.webp" />
 
 	<!-- Twitter -->
-	<meta name="twitter:card" content="summary" />
+	<meta name="twitter:card" content="summary_large_image" />
 	<meta name="twitter:title" content="ye66ow" />
-	<meta name="twitter:description" content="ye66ow — music artist" />
-	<meta name="twitter:image" content="https://ye66ow.com/favicon-512.png" />
+	<meta name="twitter:description" content="peacemusic · new music out now" />
+	<meta name="twitter:image" content="https://ye66ow.com/covers/still-alive-cover-1200.webp" />
 </svelte:head>
 
 <V1 bind:pattern bind:rampIdx bind:inverted bind:speed bind:asciiFont bind:showPanel />
