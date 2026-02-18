@@ -7,7 +7,9 @@
       "1200": "/covers/plastic-river-cover-1200.webp",
       "800": "/covers/plastic-river-cover-800.webp",
       "512": "/covers/plastic-river-cover-512.webp"
-    }
+    },
+    "bg": "/background/plastic-river.webp",
+    "audio": "/music/plast_river_final.mp3"
   },
   {
     "id": "still-alive",
@@ -17,6 +19,20 @@
       "1200": "/covers/still-alive-cover-1200.webp",
       "800": "/covers/still-alive-cover-800.webp",
       "512": "/covers/still-alive-cover-512.webp"
-    }
+    },
+    "bg": "/background/still-alive.webp",
+    "audio": "/music/still-alive-final.mp3"
+  },
+  {
+    "id": "optricia",
+    "title": "Optricia",
+    "link": "#",
+    "cover": {
+      "1200": "/background/optricia.webp",
+      "800": "/background/optricia.webp",
+      "512": "/background/optricia.webp"
+    },
+    "bg": "/background/optricia.webp",
+    "audio": "/music/optricia-fin.mp3"
   }
 ]

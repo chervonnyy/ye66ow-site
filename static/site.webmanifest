@@ -1,7 +1,7 @@
 {
   "name": "ye66ow",
   "short_name": "ye66ow",
-  "description": "ye66ow",
+  "description": "ye66ow — music artist",
   "start_url": "/",
   "display": "fullscreen",
   "orientation": "any",
@@ -42,7 +42,7 @@
     {
       "name": "ye66ow",
       "short_name": "ye66ow",
-      "description": "ye66ow",
+      "description": "ye66ow — music artist",
       "url": "/"
     }
   ],

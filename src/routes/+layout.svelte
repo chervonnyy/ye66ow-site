@@ -1,29 +1,8 @@
 <script lang="ts">
 	import '../app.css';
 	import favicon from '$lib/assets/favicon.svg';
-	import { onMount } from 'svelte';
-	import { browser } from '$app/environment';
 
 	let { children } = $props();
-
-	onMount(() => {
-		if (browser && 'serviceWorker' in navigator) {
-			// Register service worker
-			navigator.serviceWorker
-				.register('/sw.js')
-				.then((registration) => {
-					console.log('SW registered: ', registration);
-				})
-				.catch((registrationError) => {
-					console.log('SW registration failed: ', registrationError);
-				});
-
-			// Handle app updates
-			navigator.serviceWorker.addEventListener('controllerchange', () => {
-				window.location.reload();
-			});
-		}
-	});
 </script>
 
 <svelte:head>
@@ -45,6 +24,14 @@
 	<link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png" />
 	<link rel="icon" type="image/png" sizes="512x512" href="/favicon-512.png" />
 	<link rel="icon" href="/favicon.ico" />
+
+	<!-- Fonts -->
+	<link rel="preconnect" href="https://fonts.googleapis.com" />
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+	<link
+		href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700;800&family=Outfit:wght@100;200;300;400&display=swap"
+		rel="stylesheet"
+	/>
 
 	<!-- Theme Colors -->
 	<meta name="theme-color" content="#000000" />
